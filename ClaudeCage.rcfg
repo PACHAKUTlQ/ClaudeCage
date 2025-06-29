@@ -1,0 +1,32 @@
+# --- ClaudeCage Sandbox Configuration ---
+
+# --- 1. AUTORUN ---
+# claude wrapper in /usr/local/bin that runs claude code using bun
+RIM_AUTORUN=("claude")
+
+# --- 2. ENVIRONMENT VARIABLES ---
+export DISABLE_AUTOUPDATER=1
+export DISABLE_NON_ESSENTIAL_MODEL_CALLS=1
+export DISABLE_TELEMETRY=1
+
+# --- 3. SANDBOXING RULES ---
+
+# Bind claude's config, data and cache directory
+RIM_BIND+=("$HOME/.claude.json:$HOME/.claude.json")
+RIM_BIND+=("$HOME/.claude:$HOME/.claude")
+
+# This creates a writable /home in RAM, allowing the bind mount to work.
+RIM_TMP_HOME=1
+
+# Bind the current working directory from the host into the container.
+RIM_BIND_PWD=1
+
+# Start the 'claude' command in the same working directory.
+RIM_EXEC_SAME_PWD=1
+
+# For better isolation, unshare other common host resources.
+RIM_UNSHARE_TMP=1
+RIM_UNSHARE_PIDS=1
+RIM_UNSHARE_USERS=1
+RIM_UNSHARE_HOSTNAME=1
+
