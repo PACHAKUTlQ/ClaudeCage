@@ -15,35 +15,47 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install SUID Bubblewrap
+      - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y bubblewrap
-          echo "bubblewrap installed."
+          # Install SUID bubblewrap (for the fallback) and zip (for archiving)
+          sudo apt-get install -y bubblewrap zip
+          echo "Dependencies installed."
 
-      # --- MODIFIED STEP: Run build.sh inside a minimal 'blinding' sandbox ---
-      - name: Make build.sh executable and run it
+      # --- NEW STEP: Unpack and Patch the RunImage script ---
+      - name: Prepare Patched RunImage for Build
         run: |
-          echo "Running build.sh inside a wrapper sandbox to bypass AppArmor check..."
+          echo "Downloading RunImage for patching..."
+          curl -# -Lo runimage https://github.com/VHSgunzo/runimage/releases/download/continuous/runimage-x86_64
+          chmod +x runimage
+          
+          echo "Unpacking RunImage rootfs..."
+          mkdir ./unpacked_rootfs
+          # This is a robust way to extract to a specific directory
+          (cd ./unpacked_rootfs && ../runimage --runtime-extract '*')
+
+          echo "Patching Run.sh to disable AppArmor check..."
+          # This sed command finds the specific 'if' statement and prepends a '#' to comment it out.
+          # This surgically removes the faulty check.
+          sed -i 's|if \[ -f /sys/module/apparmor/parameters/restrict_unprivileged_userns \]; then|# &|' ./unpacked_rootfs/var/RunDir/Run.sh
+          
+          echo "RunImage is patched and ready for the build process."
+
+      # --- MODIFIED STEP: Run build.sh using the patched rootfs ---
+      - name: Run Build Script
+        run: |
+          echo "Running build.sh using the patched rootfs and SUID bwrap..."
           chmod +x ./build.sh
 
           # This is the core of the fix:
-          # 1. We use the system's 'bwrap' to create an outer sandbox.
-          # 2. '--share-net': The build process needs network access.
-          # 3. '--dev-bind / /': Give the sandbox access to the host's entire filesystem.
-          # 4. '--tmpfs /sys':  THIS IS THE TRICK. It mounts an empty, temporary
-          #    filesystem over /sys, hiding the AppArmor parameter file from RunImage.
-          # 5. 'env RIM_SYS_BWRAP=1 ./build.sh': We run our script with the
-          #    environment variable that tells the *inner* RunImage to use the SUID
-          #    fallback once it gets past its faulty check.
-          bwrap \
-            --share-net \
-            --dev-bind / / \
-            --proc /proc \
-            --dev /dev \
-            --tmpfs /sys \
-            env RIM_SYS_BWRAP=1 ./build.sh
-            
+          # 1. RIM_ROOTFS points to our patched, unpacked filesystem.
+          # 2. RIM_SYS_BWRAP=1 enables the SUID fallback.
+          # 3. We use the *original* 'runimage' binary as the engine.
+          env \
+            RIM_ROOTFS=$(pwd)/unpacked_rootfs \
+            RIM_SYS_BWRAP=1 \
+            ./runimage ./build.sh
+
           echo "build.sh completed."
 
       - name: Verify output files exist
