@@ -32,37 +32,31 @@ jobs:
           OFFSET=$(./runimage --runtime-offset)
           dd if=runimage of=runtime bs=1 count=$(($OFFSET - 1))
           dd if=runimage of=fs_and_config.img bs=1 skip=$(($OFFSET - 1))
-
-          echo "Unpacking the rootfs..."
-          mkdir ./rootfs_parent
-          # The extraction tools create their own subdirectory, so we run them inside a parent dir.
-          (
-            cd ./rootfs_parent
-            # Try DwarFS first
-            if ../runimage --runtime-dwarfsextract -i ../fs_and_config.img; then
-                FS_TYPE="dwfs"
-                # The tool creates a 'rootfs' directory.
-                EXTRACTED_DIR="rootfs"
-            else
-                echo "DwarFS extract failed, trying SquashFS..."
-                # The runimage unsquashfs extracts to a 'squashfs-root' dir by default.
-                ../runimage --runtime-unsquashfs -d squashfs-root ../fs_and_config.img
-                FS_TYPE="sqfs"
-                EXTRACTED_DIR="squashfs-root"
-            fi
-            # We add a marker file to communicate the directory name back to the parent shell.
-            echo "$EXTRACTED_DIR" > .extraction_dir_name
-          )
           
-          # Read the name of the directory created by the extractor
-          EXTRACTED_SUBDIR_NAME=$(cat ./rootfs_parent/.extraction_dir_name)
-          EXTRACTED_ROOT_PATH="./rootfs_parent/$EXTRACTED_SUBDIR_NAME"
+          echo "Determining filesystem type and ensuring it is SquashFS..."
+          # Create a directory to unpack into.
+          mkdir ./rootfs_unpacked
+          # We now ONLY use unsquashfs. We test if the image is SquashFS first.
+          if ./runimage --runtime-unsquashfs -s fs_and_config.img &>/dev/null; then
+              echo "Filesystem is SquashFS. Proceeding to unpack."
+              ./runimage --runtime-unsquashfs -f -d ./rootfs_unpacked fs_and_config.img
+          else
+              echo "Filesystem is DwarFS. Converting to SquashFS first..."
+              mkdir ./temp_dwarfs_unpacked
+              # Unpack the DwarFS image
+              ./runimage --runtime-dwarfsextract -i fs_and_config.img -o ./temp_dwarfs_unpacked
+              # Repack it as a SquashFS image
+              ./runimage --runtime-mksquashfs ./temp_dwarfs_unpacked fs_and_config.img -no-xattrs -noappend
+              # Now unpack the new SquashFS image
+              ./runimage --runtime-unsquashfs -f -d ./rootfs_unpacked fs_and_config.img
+              rm -rf ./temp_dwarfs_unpacked
+          fi
           
-          echo "Verifying extraction at $EXTRACTED_ROOT_PATH..."
-          # Add a diagnostic listing to be absolutely sure
-          ls -l "$EXTRACTED_ROOT_PATH/var/RunDir"
+          echo "Verifying extraction. Listing contents of ./rootfs_unpacked/var/RunDir/:"
+          # This diagnostic will prove the files exist before we try to patch them.
+          ls -lR ./rootfs_unpacked/var/RunDir/
 
-          PATCH_TARGET_FILE="$EXTRACTED_ROOT_PATH/var/RunDir/Run.sh"
+          PATCH_TARGET_FILE="./rootfs_unpacked/var/RunDir/Run.sh"
           if [ ! -f "$PATCH_TARGET_FILE" ]; then
               echo "FATAL: Could not find Run.sh at the expected path: $PATCH_TARGET_FILE"
               exit 1
@@ -71,12 +65,8 @@ jobs:
           echo "Patching $PATCH_TARGET_FILE..."
           sed -i 's|if \[ -f /sys/module/apparmor/parameters/restrict_unprivileged_userns \]; then|# &|' "$PATCH_TARGET_FILE"
           
-          echo "Re-packing the patched rootfs from $EXTRACTED_ROOT_PATH..."
-          if [ "$FS_TYPE" = "dwfs" ]; then
-              ./runimage --runtime-mkdwarfs -i "$EXTRACTED_ROOT_PATH" -o fs_patched.img
-          else
-              ./runimage --runtime-mksquashfs "$EXTRACTED_ROOT_PATH" fs_patched.img -no-xattrs -noappend
-          fi
+          echo "Re-packing the patched rootfs as SquashFS..."
+          ./runimage --runtime-mksquashfs ./rootfs_unpacked fs_patched.img -no-xattrs -noappend
 
           echo "Re-assembling the patched RunImage..."
           grep -a --binary-files=text -o '{.*}$' fs_and_config.img > config.json
