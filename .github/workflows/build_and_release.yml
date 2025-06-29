@@ -18,43 +18,69 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          # Install SUID bubblewrap (for the fallback) and zip (for archiving)
           sudo apt-get install -y bubblewrap zip
           echo "Dependencies installed."
 
-      # --- NEW STEP: Unpack and Patch the RunImage script ---
+      # --- MODIFIED STEP: Deconstruct, Patch, and Reconstruct RunImage ---
       - name: Prepare Patched RunImage for Build
         run: |
-          echo "Downloading RunImage for patching..."
+          echo "Downloading RunImage..."
           curl -# -Lo runimage https://github.com/VHSgunzo/runimage/releases/download/continuous/runimage-x86_64
           chmod +x runimage
-          
-          echo "Unpacking RunImage rootfs..."
-          mkdir ./unpacked_rootfs
-          # This is a robust way to extract to a specific directory
-          (cd ./unpacked_rootfs && ../runimage --runtime-extract '*')
 
+          echo "Deconstructing the original RunImage..."
+          # Get the offset where the filesystem image begins
+          OFFSET=$(./runimage --runtime-offset)
+          # Extract the runtime (part 1)
+          dd if=runimage of=runtime bs=1 count=$(($OFFSET - 1))
+          # Extract the filesystem image and config (part 2)
+          dd if=runimage of=fs_and_config.img bs=1 skip=$(($OFFSET - 1))
+
+          echo "Unpacking the rootfs..."
+          mkdir ./rootfs_unpacked
+          # Use the runimage's own tools to extract its filesystem
+          # The filesystem type can be dwarfs or squashfs, this handles both
+          if ./runimage --runtime-dwarfsextract -i fs_and_config.img -o ./rootfs_unpacked; then
+              FS_TYPE="dwfs"
+          else
+              echo "DwarFS extract failed, trying SquashFS..."
+              ./runimage --runtime-unsquashfs -d ./rootfs_unpacked fs_and_config.img
+              FS_TYPE="sqfs"
+          fi
+          
           echo "Patching Run.sh to disable AppArmor check..."
           # This sed command finds the specific 'if' statement and prepends a '#' to comment it out.
-          # This surgically removes the faulty check.
-          sed -i 's|if \[ -f /sys/module/apparmor/parameters/restrict_unprivileged_userns \]; then|# &|' ./unpacked_rootfs/var/RunDir/Run.sh
-          
-          echo "RunImage is patched and ready for the build process."
+          sed -i 's|if \[ -f /sys/module/apparmor/parameters/restrict_unprivileged_userns \]; then|# &|' ./rootfs_unpacked/var/RunDir/Run.sh
 
-      # --- MODIFIED STEP: Run build.sh using the patched rootfs ---
+          echo "Re-packing the patched rootfs..."
+          # Re-pack using the same filesystem type
+          if [ "$FS_TYPE" = "dwfs" ]; then
+              ./runimage --runtime-mkdwarfs -i ./rootfs_unpacked -o fs_patched.img
+          else
+              ./runimage --runtime-mksquashfs ./rootfs_unpacked fs_patched.img -no-xattrs -noappend
+          fi
+
+          echo "Re-assembling the patched RunImage..."
+          # Get the original JSON config from the end of the original fs image
+          grep -a --binary-files=text -o '{.*}$' fs_and_config.img > config.json
+          # Concatenate the three parts into a new, working RunImage
+          cat runtime fs_patched.img config.json > runimage_patched
+          chmod +x runimage_patched
+
+          echo "Patched RunImage created successfully."
+
+      # --- MODIFIED STEP: Run build.sh using the fully patched executable ---
       - name: Run Build Script
         run: |
-          echo "Running build.sh using the patched rootfs and SUID bwrap..."
+          echo "Running build.sh using the patched executable and SUID bwrap..."
           chmod +x ./build.sh
 
-          # This is the core of the fix:
-          # 1. RIM_ROOTFS points to our patched, unpacked filesystem.
-          # 2. RIM_SYS_BWRAP=1 enables the SUID fallback.
-          # 3. We use the *original* 'runimage' binary as the engine.
+          # We now use our new 'runimage_patched' executable.
+          # It has the check removed internally, so it will successfully fall back
+          # to using the system's SUID bwrap.
           env \
-            RIM_ROOTFS=$(pwd)/unpacked_rootfs \
             RIM_SYS_BWRAP=1 \
-            ./runimage ./build.sh
+            ./runimage_patched ./build.sh
 
           echo "build.sh completed."
 
@@ -79,8 +105,6 @@ jobs:
           name: Automated Build ${{ github.run_id }} (Commit ${{ github.sha_short }})
           body: |
             This is an automated build from commit `${{ github.sha_short }}` on branch `${{ github.ref_name }}`.
-
             [View Workflow Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
-
             The attached `ClaudeCage_release.zip` contains the `ClaudeCage` executable and `ClaudeCage.rcfg` configuration file.
           files: ClaudeCage_release.zip
