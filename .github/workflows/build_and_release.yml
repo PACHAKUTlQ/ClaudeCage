@@ -1,0 +1,56 @@
+name: Build and Release ClaudeCage
+
+on:
+  push:
+    branches:
+      - main # Trigger on push to the main branch
+
+jobs:
+  build_and_release:
+    runs-on: ubuntu-latest # Specify the runner environment (Ubuntu Linux)
+    permissions:
+      contents: write # Grant permission to write to repository contents (for creating release)
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4 # Action to check out your repository code
+
+      - name: Make build.sh executable and run it
+        run: |
+          echo "Running build.sh..."
+          chmod +x ./build.sh # Ensure the script is executable
+          ./build.sh         # Run your build script
+          echo "build.sh completed."
+
+      - name: Verify output files exist
+        run: |
+          echo "Verifying output files..."
+          ls -l ClaudeCage ClaudeCage.rcfg # List files to confirm they were created
+          test -f ClaudeCage               # Check if ClaudeCage exists
+          test -f ClaudeCage.rcfg          # Check if ClaudeCage.rcfg exists
+          echo "Output files verified."
+
+      - name: Create release archive
+        run: |
+          echo "Creating ClaudeCage_release.zip..."
+          zip ClaudeCage_release.zip ClaudeCage ClaudeCage.rcfg # Create a zip file with the outputs
+          echo "ClaudeCage_release.zip created."
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1 # Action to create a GitHub Release
+        with:
+          # Dynamically generate a tag name using the workflow run ID and short commit SHA
+          # This ensures a unique tag for each automated build.
+          # Example: build-123456789-abcdefg
+          tag_name: build-${{ github.run_id }}-${{ github.sha_short }}
+          # Name for the release
+          name: Automated Build ${{ github.run_id }} (Commit ${{ github.sha_short }})
+          # Release body content
+          body: |
+            This is an automated build from commit `${{ github.sha_short }}` on branch `${{ github.ref_name }}`.
+
+            [View Workflow Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+            The attached `ClaudeCage_release.zip` contains the `ClaudeCage` executable and `ClaudeCage.rcfg` configuration file.
+          # Path to the artifact to upload
+          files: ClaudeCage_release.zip
