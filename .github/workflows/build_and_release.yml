@@ -21,7 +21,7 @@ jobs:
           sudo apt-get install -y bubblewrap zip
           echo "Dependencies installed."
 
-      # --- MODIFIED STEP: Deconstruct, Patch, and Reconstruct RunImage ---
+      # --- REVISED STEP: Deconstruct, Patch, and Reconstruct RunImage ---
       - name: Prepare Patched RunImage for Build
         run: |
           echo "Downloading RunImage..."
@@ -29,59 +29,69 @@ jobs:
           chmod +x runimage
 
           echo "Deconstructing the original RunImage..."
-          # Get the offset where the filesystem image begins
           OFFSET=$(./runimage --runtime-offset)
-          # Extract the runtime (part 1)
           dd if=runimage of=runtime bs=1 count=$(($OFFSET - 1))
-          # Extract the filesystem image and config (part 2)
           dd if=runimage of=fs_and_config.img bs=1 skip=$(($OFFSET - 1))
 
           echo "Unpacking the rootfs..."
-          mkdir ./rootfs_unpacked
-          # Use the runimage's own tools to extract its filesystem
-          # The filesystem type can be dwarfs or squashfs, this handles both
-          if ./runimage --runtime-dwarfsextract -i fs_and_config.img -o ./rootfs_unpacked; then
-              FS_TYPE="dwfs"
-          else
-              echo "DwarFS extract failed, trying SquashFS..."
-              ./runimage --runtime-unsquashfs -d ./rootfs_unpacked fs_and_config.img
-              FS_TYPE="sqfs"
-          fi
+          mkdir ./rootfs_parent
+          # The extraction tools create their own subdirectory, so we run them inside a parent dir.
+          (
+            cd ./rootfs_parent
+            # Try DwarFS first
+            if ../runimage --runtime-dwarfsextract -i ../fs_and_config.img; then
+                FS_TYPE="dwfs"
+                # The tool creates a 'rootfs' directory.
+                EXTRACTED_DIR="rootfs"
+            else
+                echo "DwarFS extract failed, trying SquashFS..."
+                # The runimage unsquashfs extracts to a 'squashfs-root' dir by default.
+                ../runimage --runtime-unsquashfs -d squashfs-root ../fs_and_config.img
+                FS_TYPE="sqfs"
+                EXTRACTED_DIR="squashfs-root"
+            fi
+            # We add a marker file to communicate the directory name back to the parent shell.
+            echo "$EXTRACTED_DIR" > .extraction_dir_name
+          )
           
-          echo "Patching Run.sh to disable AppArmor check..."
-          # This sed command finds the specific 'if' statement and prepends a '#' to comment it out.
-          sed -i 's|if \[ -f /sys/module/apparmor/parameters/restrict_unprivileged_userns \]; then|# &|' ./rootfs_unpacked/var/RunDir/Run.sh
+          # Read the name of the directory created by the extractor
+          EXTRACTED_SUBDIR_NAME=$(cat ./rootfs_parent/.extraction_dir_name)
+          EXTRACTED_ROOT_PATH="./rootfs_parent/$EXTRACTED_SUBDIR_NAME"
+          
+          echo "Verifying extraction at $EXTRACTED_ROOT_PATH..."
+          # Add a diagnostic listing to be absolutely sure
+          ls -l "$EXTRACTED_ROOT_PATH/var/RunDir"
 
-          echo "Re-packing the patched rootfs..."
-          # Re-pack using the same filesystem type
+          PATCH_TARGET_FILE="$EXTRACTED_ROOT_PATH/var/RunDir/Run.sh"
+          if [ ! -f "$PATCH_TARGET_FILE" ]; then
+              echo "FATAL: Could not find Run.sh at the expected path: $PATCH_TARGET_FILE"
+              exit 1
+          fi
+
+          echo "Patching $PATCH_TARGET_FILE..."
+          sed -i 's|if \[ -f /sys/module/apparmor/parameters/restrict_unprivileged_userns \]; then|# &|' "$PATCH_TARGET_FILE"
+          
+          echo "Re-packing the patched rootfs from $EXTRACTED_ROOT_PATH..."
           if [ "$FS_TYPE" = "dwfs" ]; then
-              ./runimage --runtime-mkdwarfs -i ./rootfs_unpacked -o fs_patched.img
+              ./runimage --runtime-mkdwarfs -i "$EXTRACTED_ROOT_PATH" -o fs_patched.img
           else
-              ./runimage --runtime-mksquashfs ./rootfs_unpacked fs_patched.img -no-xattrs -noappend
+              ./runimage --runtime-mksquashfs "$EXTRACTED_ROOT_PATH" fs_patched.img -no-xattrs -noappend
           fi
 
           echo "Re-assembling the patched RunImage..."
-          # Get the original JSON config from the end of the original fs image
           grep -a --binary-files=text -o '{.*}$' fs_and_config.img > config.json
-          # Concatenate the three parts into a new, working RunImage
           cat runtime fs_patched.img config.json > runimage_patched
           chmod +x runimage_patched
 
           echo "Patched RunImage created successfully."
 
-      # --- MODIFIED STEP: Run build.sh using the fully patched executable ---
       - name: Run Build Script
         run: |
           echo "Running build.sh using the patched executable and SUID bwrap..."
           chmod +x ./build.sh
-
-          # We now use our new 'runimage_patched' executable.
-          # It has the check removed internally, so it will successfully fall back
-          # to using the system's SUID bwrap.
           env \
             RIM_SYS_BWRAP=1 \
             ./runimage_patched ./build.sh
-
           echo "build.sh completed."
 
       - name: Verify output files exist
