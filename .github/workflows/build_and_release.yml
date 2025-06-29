@@ -34,54 +34,48 @@ jobs:
           dd if=runimage of=fs_and_config.img bs=1 skip=$(($OFFSET - 1))
           
           echo "Ensuring filesystem is a usable SquashFS image..."
-          # Create a directory to unpack into.
-          mkdir ./rootfs_unpacked
-          
           # We now ONLY use unsquashfs. We test if the image is SquashFS first.
           if ./runimage --runtime-unsquashfs -s fs_and_config.img &>/dev/null; then
-              echo "Filesystem is already SquashFS. Proceeding to unpack."
+              echo "Filesystem is already SquashFS."
           else
               echo "Filesystem is DwarFS. Converting to SquashFS..."
               mkdir ./temp_dwarfs_unpacked
               # Unpack the DwarFS image. We know it creates a 'rootfs' subdirectory.
               ./runimage --runtime-dwarfsextract -i fs_and_config.img -o ./temp_dwarfs_unpacked
-              
-              # --- THIS IS THE CRITICAL FIX ---
-              # Define the path to the *actual content* inside the subdirectory.
               DWARFS_CONTENT_PATH="./temp_dwarfs_unpacked/rootfs"
-              
-              echo "Verifying DwarFS extraction at $DWARFS_CONTENT_PATH..."
               if [ ! -d "$DWARFS_CONTENT_PATH/var" ]; then
                 echo "FATAL: DwarFS extraction failed to produce the expected 'rootfs' subdirectory."
                 exit 1
               fi
-
-              # Repack it as a SquashFS image, pointing to the CORRECT directory.
-              echo "Repacking from $DWARFS_CONTENT_PATH..."
+              # Repack it as a SquashFS image, pointing to the CORRECT content directory.
               ./runimage --runtime-mksquashfs "$DWARFS_CONTENT_PATH" fs_and_config.img -no-xattrs -noappend
               rm -rf ./temp_dwarfs_unpacked
           fi
           
           # Now that we are GUARANTEED to have a SquashFS image, unpack it.
-          echo "Unpacking final SquashFS image..."
-          # The '-d' flag is often ignored if the destination exists, so we ensure it's empty and use -f (force)
-          rm -rf ./rootfs_unpacked/*
-          ./runimage --runtime-unsquashfs -f -d ./rootfs_unpacked fs_and_config.img
+          echo "Unpacking final SquashFS image into ./unpacked_fs_parent..."
+          mkdir ./unpacked_fs_parent
+          ./runimage --runtime-unsquashfs -f -d ./unpacked_fs_parent fs_and_config.img
 
-          echo "Verifying final extraction. Listing contents of ./rootfs_unpacked/var/RunDir/:"
-          ls -lR ./rootfs_unpacked/var/RunDir/
+          # --- THIS IS THE FINAL, CRITICAL FIX ---
+          # Unsquashfs creates a 'squashfs-root' subdirectory. We must target it explicitly.
+          EXTRACTED_ROOT_PATH="./unpacked_fs_parent/squashfs-root"
 
-          PATCH_TARGET_FILE="./rootfs_unpacked/var/RunDir/Run.sh"
-          if [ ! -f "$PATCH_TARGET_FILE" ]; then
-              echo "FATAL: Could not find Run.sh at the expected path: $PATCH_TARGET_FILE"
+          echo "Verifying final extraction at $EXTRACTED_ROOT_PATH..."
+          if [ ! -d "$EXTRACTED_ROOT_PATH/var" ]; then
+              echo "FATAL: Unsquashfs failed to create the expected 'squashfs-root' subdirectory."
+              ls -lR ./unpacked_fs_parent # Show what was actually created for debugging.
               exit 1
           fi
+          ls -lR "$EXTRACTED_ROOT_PATH/var/RunDir/" # This will now succeed.
+
+          PATCH_TARGET_FILE="$EXTRACTED_ROOT_PATH/var/RunDir/Run.sh"
 
           echo "Patching $PATCH_TARGET_FILE..."
           sed -i 's|if \[ -f /sys/module/apparmor/parameters/restrict_unprivileged_userns \]; then|# &|' "$PATCH_TARGET_FILE"
           
-          echo "Re-packing the patched rootfs as SquashFS..."
-          ./runimage --runtime-mksquashfs ./rootfs_unpacked fs_patched.img -no-xattrs -noappend
+          echo "Re-packing the patched rootfs from $EXTRACTED_ROOT_PATH..."
+          ./runimage --runtime-mksquashfs "$EXTRACTED_ROOT_PATH" fs_patched.img -no-xattrs -noappend
 
           echo "Re-assembling the patched RunImage..."
           grep -a --binary-files=text -o '{.*}$' fs_and_config.img > config.json
