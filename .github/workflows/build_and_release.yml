@@ -21,7 +21,7 @@ jobs:
           sudo apt-get install -y bubblewrap zip
           echo "Dependencies installed."
 
-      # --- REVISED STEP: Deconstruct, Patch, and Reconstruct RunImage ---
+      # --- FINAL REVISED STEP: Deconstruct, Patch, and Reconstruct RunImage ---
       - name: Prepare Patched RunImage for Build
         run: |
           echo "Downloading RunImage..."
@@ -33,27 +33,42 @@ jobs:
           dd if=runimage of=runtime bs=1 count=$(($OFFSET - 1))
           dd if=runimage of=fs_and_config.img bs=1 skip=$(($OFFSET - 1))
           
-          echo "Determining filesystem type and ensuring it is SquashFS..."
+          echo "Ensuring filesystem is a usable SquashFS image..."
           # Create a directory to unpack into.
           mkdir ./rootfs_unpacked
+          
           # We now ONLY use unsquashfs. We test if the image is SquashFS first.
           if ./runimage --runtime-unsquashfs -s fs_and_config.img &>/dev/null; then
-              echo "Filesystem is SquashFS. Proceeding to unpack."
-              ./runimage --runtime-unsquashfs -f -d ./rootfs_unpacked fs_and_config.img
+              echo "Filesystem is already SquashFS. Proceeding to unpack."
           else
-              echo "Filesystem is DwarFS. Converting to SquashFS first..."
+              echo "Filesystem is DwarFS. Converting to SquashFS..."
               mkdir ./temp_dwarfs_unpacked
-              # Unpack the DwarFS image
+              # Unpack the DwarFS image. We know it creates a 'rootfs' subdirectory.
               ./runimage --runtime-dwarfsextract -i fs_and_config.img -o ./temp_dwarfs_unpacked
-              # Repack it as a SquashFS image
-              ./runimage --runtime-mksquashfs ./temp_dwarfs_unpacked fs_and_config.img -no-xattrs -noappend
-              # Now unpack the new SquashFS image
-              ./runimage --runtime-unsquashfs -f -d ./rootfs_unpacked fs_and_config.img
+              
+              # --- THIS IS THE CRITICAL FIX ---
+              # Define the path to the *actual content* inside the subdirectory.
+              DWARFS_CONTENT_PATH="./temp_dwarfs_unpacked/rootfs"
+              
+              echo "Verifying DwarFS extraction at $DWARFS_CONTENT_PATH..."
+              if [ ! -d "$DWARFS_CONTENT_PATH/var" ]; then
+                echo "FATAL: DwarFS extraction failed to produce the expected 'rootfs' subdirectory."
+                exit 1
+              fi
+
+              # Repack it as a SquashFS image, pointing to the CORRECT directory.
+              echo "Repacking from $DWARFS_CONTENT_PATH..."
+              ./runimage --runtime-mksquashfs "$DWARFS_CONTENT_PATH" fs_and_config.img -no-xattrs -noappend
               rm -rf ./temp_dwarfs_unpacked
           fi
           
-          echo "Verifying extraction. Listing contents of ./rootfs_unpacked/var/RunDir/:"
-          # This diagnostic will prove the files exist before we try to patch them.
+          # Now that we are GUARANTEED to have a SquashFS image, unpack it.
+          echo "Unpacking final SquashFS image..."
+          # The '-d' flag is often ignored if the destination exists, so we ensure it's empty and use -f (force)
+          rm -rf ./rootfs_unpacked/*
+          ./runimage --runtime-unsquashfs -f -d ./rootfs_unpacked fs_and_config.img
+
+          echo "Verifying final extraction. Listing contents of ./rootfs_unpacked/var/RunDir/:"
           ls -lR ./rootfs_unpacked/var/RunDir/
 
           PATCH_TARGET_FILE="./rootfs_unpacked/var/RunDir/Run.sh"
