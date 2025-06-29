@@ -3,36 +3,47 @@ name: Build and Release ClaudeCage
 on:
   push:
     branches:
-      - main # Trigger on push to the main branch
+      - main
 
 jobs:
   build_and_release:
-    runs-on: ubuntu-latest # Specify the runner environment (Ubuntu Linux)
+    runs-on: ubuntu-latest
     permissions:
-      contents: write # Grant permission to write to repository contents (for creating release)
+      contents: write
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4 # Action to check out your repository code
+        uses: actions/checkout@v4
 
-      # --- NEW STEP: Install SUID Bubblewrap ---
-      # This step uses sudo to install the system's bubblewrap. The package manager
-      # will set it up with SUID permissions, which acts as a fallback when
-      # unprivileged user namespaces are disabled by AppArmor.
       - name: Install SUID Bubblewrap
         run: |
           sudo apt-get update
           sudo apt-get install -y bubblewrap
           echo "bubblewrap installed."
 
-      # --- MODIFIED STEP: Run build.sh with the correct environment variable ---
+      # --- MODIFIED STEP: Run build.sh inside a minimal 'blinding' sandbox ---
       - name: Make build.sh executable and run it
-        # We set RIM_SYS_BWRAP=1 to tell RunImage to use the SUID bubblewrap
-        # we just installed, bypassing the AppArmor restriction.
         run: |
-          echo "Running build.sh..."
+          echo "Running build.sh inside a wrapper sandbox to bypass AppArmor check..."
           chmod +x ./build.sh
-          env RIM_SYS_BWRAP=1 ./build.sh
+
+          # This is the core of the fix:
+          # 1. We use the system's 'bwrap' to create an outer sandbox.
+          # 2. '--share-net': The build process needs network access.
+          # 3. '--dev-bind / /': Give the sandbox access to the host's entire filesystem.
+          # 4. '--tmpfs /sys':  THIS IS THE TRICK. It mounts an empty, temporary
+          #    filesystem over /sys, hiding the AppArmor parameter file from RunImage.
+          # 5. 'env RIM_SYS_BWRAP=1 ./build.sh': We run our script with the
+          #    environment variable that tells the *inner* RunImage to use the SUID
+          #    fallback once it gets past its faulty check.
+          bwrap \
+            --share-net \
+            --dev-bind / / \
+            --proc /proc \
+            --dev /dev \
+            --tmpfs /sys \
+            env RIM_SYS_BWRAP=1 ./build.sh
+            
           echo "build.sh completed."
 
       - name: Verify output files exist
