@@ -21,7 +21,7 @@ jobs:
           sudo apt-get install -y bubblewrap zip
           echo "Dependencies installed."
 
-      # --- FINAL REVISED STEP: Deconstruct, Patch, and Reconstruct RunImage ---
+      # --- FINAL, VINDICATED STEP: Deconstruct, Patch, and Reconstruct RunImage ---
       - name: Prepare Patched RunImage for Build
         run: |
           echo "Downloading RunImage..."
@@ -34,41 +34,41 @@ jobs:
           dd if=runimage of=fs_and_config.img bs=1 skip=$(($OFFSET - 1))
           
           echo "Ensuring filesystem is a usable SquashFS image..."
-          # We now ONLY use unsquashfs. We test if the image is SquashFS first.
+          # We test if the image is SquashFS first.
           if ./runimage --runtime-unsquashfs -s fs_and_config.img &>/dev/null; then
               echo "Filesystem is already SquashFS."
           else
               echo "Filesystem is DwarFS. Converting to SquashFS..."
               mkdir ./temp_dwarfs_unpacked
-              # Unpack the DwarFS image. We know it creates a 'rootfs' subdirectory.
               ./runimage --runtime-dwarfsextract -i fs_and_config.img -o ./temp_dwarfs_unpacked
               DWARFS_CONTENT_PATH="./temp_dwarfs_unpacked/rootfs"
               if [ ! -d "$DWARFS_CONTENT_PATH/var" ]; then
-                echo "FATAL: DwarFS extraction failed to produce the expected 'rootfs' subdirectory."
+                echo "FATAL: Dwarfs extraction failed to produce the expected 'rootfs' subdirectory."
                 exit 1
               fi
-              # Repack it as a SquashFS image, pointing to the CORRECT content directory.
               ./runimage --runtime-mksquashfs "$DWARFS_CONTENT_PATH" fs_and_config.img -no-xattrs -noappend
               rm -rf ./temp_dwarfs_unpacked
           fi
           
           # Now that we are GUARANTEED to have a SquashFS image, unpack it.
-          echo "Unpacking final SquashFS image into ./unpacked_fs_parent..."
-          mkdir ./unpacked_fs_parent
-          ./runimage --runtime-unsquashfs -f -d ./unpacked_fs_parent fs_and_config.img
+          # We create a clean directory to unpack into.
+          mkdir ./rootfs_content
+          echo "Unpacking final SquashFS image into ./rootfs_content..."
+          ./runimage --runtime-unsquashfs -f -d ./rootfs_content fs_and_config.img
 
-          # --- THIS IS THE FINAL, CRITICAL FIX ---
-          # Unsquashfs creates a 'squashfs-root' subdirectory. We must target it explicitly.
-          EXTRACTED_ROOT_PATH="./unpacked_fs_parent/squashfs-root"
+          # --- THIS IS THE FINAL, TRUE FIX ---
+          # The logs have proven that the files are unpacked directly into the destination.
+          # The path to the content IS the destination directory itself.
+          EXTRACTED_ROOT_PATH="./rootfs_content"
 
           echo "Verifying final extraction at $EXTRACTED_ROOT_PATH..."
-          if [ ! -d "$EXTRACTED_ROOT_PATH/var" ]; then
-              echo "FATAL: Unsquashfs failed to create the expected 'squashfs-root' subdirectory."
-              ls -lR ./unpacked_fs_parent # Show what was actually created for debugging.
+          if [ ! -d "$EXTRACTED_ROOT_PATH/var/RunDir" ]; then
+              echo "FATAL: Final extraction failed. /var/RunDir not found in $EXTRACTED_ROOT_PATH"
+              ls -lR "$EXTRACTED_ROOT_PATH"
               exit 1
           fi
-          ls -lR "$EXTRACTED_ROOT_PATH/var/RunDir/" # This will now succeed.
-
+          echo "Verification successful. Run.sh path found."
+          
           PATCH_TARGET_FILE="$EXTRACTED_ROOT_PATH/var/RunDir/Run.sh"
 
           echo "Patching $PATCH_TARGET_FILE..."
