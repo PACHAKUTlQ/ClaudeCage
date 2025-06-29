@@ -21,7 +21,7 @@ jobs:
           sudo apt-get install -y bubblewrap zip
           echo "Dependencies installed."
 
-      # --- FINAL, VINDICATED STEP: Deconstruct, Patch, and Reconstruct RunImage ---
+      # --- FINAL REVISED STEP: Deconstruct, Patch, and Reconstruct RunImage ---
       - name: Prepare Patched RunImage for Build
         run: |
           echo "Downloading RunImage..."
@@ -51,31 +51,30 @@ jobs:
           fi
           
           # Now that we are GUARANTEED to have a SquashFS image, unpack it.
-          # We create a clean directory to unpack into.
           mkdir ./rootfs_content
           echo "Unpacking final SquashFS image into ./rootfs_content..."
           ./runimage --runtime-unsquashfs -f -d ./rootfs_content fs_and_config.img
 
-          # --- THIS IS THE FINAL, TRUE FIX ---
-          # The logs have proven that the files are unpacked directly into the destination.
-          # The path to the content IS the destination directory itself.
-          EXTRACTED_ROOT_PATH="./rootfs_content"
+          # --- THIS IS THE FINAL, ROBUST FIX ---
+          # We will no longer assume the path. We will find it.
+          echo "Dynamically finding Run.sh within the unpacked directory..."
+          PATCH_TARGET_FILE=$(find ./rootfs_content -name Run.sh)
 
-          echo "Verifying final extraction at $EXTRACTED_ROOT_PATH..."
-          if [ ! -d "$EXTRACTED_ROOT_PATH/var/RunDir" ]; then
-              echo "FATAL: Final extraction failed. /var/RunDir not found in $EXTRACTED_ROOT_PATH"
-              ls -lR "$EXTRACTED_ROOT_PATH"
+          if [ -z "$PATCH_TARGET_FILE" ]; then
+              echo "FATAL: UNRECOVERABLE ERROR. Run.sh was NOT found anywhere in the unpacked filesystem."
+              echo "Displaying the entire unpacked directory structure for debugging:"
+              ls -lR ./rootfs_content
               exit 1
           fi
-          echo "Verification successful. Run.sh path found."
-          
-          PATCH_TARGET_FILE="$EXTRACTED_ROOT_PATH/var/RunDir/Run.sh"
+
+          echo "Verification successful. Found Run.sh at: $PATCH_TARGET_FILE"
 
           echo "Patching $PATCH_TARGET_FILE..."
+          # The pattern requires escaping brackets for sed.
           sed -i 's|if \[ -f /sys/module/apparmor/parameters/restrict_unprivileged_userns \]; then|# &|' "$PATCH_TARGET_FILE"
           
-          echo "Re-packing the patched rootfs from $EXTRACTED_ROOT_PATH..."
-          ./runimage --runtime-mksquashfs "$EXTRACTED_ROOT_PATH" fs_patched.img -no-xattrs -noappend
+          echo "Re-packing the patched rootfs from ./rootfs_content..."
+          ./runimage --runtime-mksquashfs ./rootfs_content fs_patched.img -no-xattrs -noappend
 
           echo "Re-assembling the patched RunImage..."
           grep -a --binary-files=text -o '{.*}$' fs_and_config.img > config.json
