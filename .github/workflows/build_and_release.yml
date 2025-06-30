@@ -17,22 +17,16 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y zip
+          sudo apt update
+          sudo apt install -y zip
           echo "Dependencies installed."
 
-      # --- THE ONE TRUE FIX ---
-      # This step directly addresses the root cause of all our problems.
       - name: Configure Runner Environment for RunImage
         run: |
           echo "Disabling AppArmor restriction on unprivileged user namespaces..."
-          # This is the command suggested by the original RunImage error message.
-          # The GitHub runner's sudo is sufficient to apply this kernel setting for the job.
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           echo "Environment configured."
 
-      # Now that the environment is permissive, we run the build script directly.
-      # No patching, no wrapping, no complex workarounds.
       - name: Run Build Script
         run: |
           echo "Running build.sh in the correctly configured environment..."
@@ -53,14 +47,19 @@ jobs:
           echo "Creating ClaudeCage_release.zip..."
           zip ClaudeCage_release.zip ClaudeCage ClaudeCage.rcfg
           echo "ClaudeCage_release.zip created."
+      
+      - name: Generate Release Tag
+        run: echo "TAG_NAME=build-$(date +'%Y-%m-%d-%H%M%S')" >> $GITHUB_ENV
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: build-${{ github.run_id }}-${{ github.sha_short }}
-          name: Automated Build ${{ github.run_id }} (Commit ${{ github.sha_short }})
+          tag_name: ${{ env.TAG_NAME }}
+          name: Automated Build ${{ env.TAG_NAME }} (Commit ${{ github.sha_short }})
           body: |
             This is an automated build from commit `${{ github.sha_short }}` on branch `${{ github.ref_name }}`.
+
             [View Workflow Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
             The attached `ClaudeCage_release.zip` contains the `ClaudeCage` executable and `ClaudeCage.rcfg` configuration file.
           files: ClaudeCage_release.zip
