@@ -44,9 +44,9 @@ jobs:
 
       - name: Create release archive
         run: |
-          echo "Creating ClaudeCage_release.zip..."
-          zip ClaudeCage_release.zip ClaudeCage ClaudeCage.rcfg
-          echo "ClaudeCage_release.zip created."
+          echo "Creating ClaudeCage-linux-x86_64.zip..."
+          zip ClaudeCage-linux-x86_64.zip ClaudeCage ClaudeCage.rcfg
+          echo "ClaudeCage-linux-x86_64.zip created."
       
       - name: Generate Release Tag
         run: echo "TAG_NAME=build-$(date +'%Y-%m-%d-%H%M%S')" >> $GITHUB_ENV
@@ -55,11 +55,11 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ env.TAG_NAME }}
-          name: Automated Build ${{ env.TAG_NAME }} (Commit ${{ github.sha_short }})
+          name: ${{ env.TAG_NAME }}
           body: |
-            This is an automated build from commit `${{ github.sha_short }}` on branch `${{ github.ref_name }}`.
+            This is an automated build from commit `${{ github.sha }}` on branch `${{ github.ref_name }}`.
 
             [View Workflow Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
-            The attached `ClaudeCage_release.zip` contains the `ClaudeCage` executable and `ClaudeCage.rcfg` configuration file.
-          files: ClaudeCage_release.zip
+            The attached `ClaudeCage-linux-x86_64.zip` contains the `ClaudeCage` executable and `ClaudeCage.rcfg` configuration file.
+          files: ClaudeCage-linux-x86_64.zip
