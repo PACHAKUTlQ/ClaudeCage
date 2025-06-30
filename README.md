@@ -1,6 +1,9 @@
-# ClaudeCage
+<div id="header" align="center">
+    <img src="icon.svg" width="250px" />
+    <h1>ClaudeCage</h1>
+</div>
 
-![ClaudeCage Icon](icon.svg)
+[![Build and Release](https://github.com/PACHAKUTlQ/ClaudeCage/actions/workflows/build_and_release.yml/badge.svg)](https://github.com/PACHAKUTlQ/ClaudeCage/actions/workflows/build_and_release.yml)
 
 **Run the SOTA AI coding agent in a portable, secure sandbox.**
 
