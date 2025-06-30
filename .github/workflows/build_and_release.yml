@@ -1,9 +1,7 @@
-name: Build and Release ClaudeCage
+name: Build and Release
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
   build_and_release:
