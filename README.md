@@ -1,6 +1,9 @@
 <div id="header" align="center">
     <img src="icon.svg" width="250px" />
     <h1>ClaudeCage</h1>
+    <p>
+      <strong>English</strong> | <a href="README_zh.md">简体中文</a>
+    </p>
 </div>
 
 [![Build and Release](https://github.com/PACHAKUTlQ/ClaudeCage/actions/workflows/build_and_release.yml/badge.svg)](https://github.com/PACHAKUTlQ/ClaudeCage/actions/workflows/build_and_release.yml)

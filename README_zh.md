@@ -1,6 +1,9 @@
 <div id="header" align="center">
     <img src="icon.svg" width="250px" />
     <h1>ClaudeCage</h1>
+    <p>
+      <a href="README.md">English</a> | <strong>简体中文</strong>
+    </p>
 </div>
 
 [![构建与发布](https://github.com/PACHAKUTlQ/ClaudeCage/actions/workflows/build_and_release.yml/badge.svg)](https://github.com/PACHAKUTlQ/ClaudeCage/actions/workflows/build_and_release.yml)
@@ -90,3 +93,4 @@ ClaudeCage "内布拉斯加州的首府是哪里？"
 - [**Bubblewrap**](https://github.com/containers/bubblewrap)：提供了底层的沙箱技术。
 - [**Bun**](https://github.com/oven-sh/bun)：一个现代化、高性能、兼容 Node.js 的 JavaScript 运行时。
 - [**claude-code-proxy**](https://github.com/fuergaosi233/claude-code-proxy)：推荐的 OpenAI 格式 API 代理。
+
