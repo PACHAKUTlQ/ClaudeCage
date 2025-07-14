@@ -45,7 +45,7 @@ jobs:
           echo "Creating ClaudeCage-linux-x86_64.zip..."
           zip ClaudeCage-linux-x86_64.zip ClaudeCage ClaudeCage.rcfg
           echo "ClaudeCage-linux-x86_64.zip created."
-      
+
       - name: Generate Release Tag
         run: echo "TAG_NAME=build-$(date +'%Y-%m-%d-%H%M%S')" >> $GITHUB_ENV
 
