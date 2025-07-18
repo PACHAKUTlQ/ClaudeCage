@@ -159,6 +159,9 @@ export DISABLE_TELEMETRY=1
 
 # --- 3. SANDBOXING RULES ---
 
+# Bind claude's config, data and cache directory
+RIM_BIND="$HOME/.claude.json:$HOME/.claude.json,$HOME/.claude:$HOME/.claude"
+
 # This creates a writable /home in RAM, allowing the bind mount to work.
 RIM_TMP_HOME=1
 
@@ -173,10 +176,6 @@ RIM_UNSHARE_TMP=1
 RIM_UNSHARE_PIDS=1
 RIM_UNSHARE_USERS=1
 RIM_UNSHARE_HOSTNAME=1
-
-# Bind claude's config, data and cache directory
-RIM_BIND+=("$HOME/.claude.json:$HOME/.claude.json")
-RIM_BIND+=("$HOME/.claude:$HOME/.claude")
 EOF
 
 # --- Success Message ---
