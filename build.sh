@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # ==============================================================================
 # ClaudeCage Build Script
@@ -13,12 +13,12 @@
 # ==============================================================================
 
 # Exit immediately if a command exits with a non-zero status.
-set -e
+set -euo pipefail
 
 # --- Configuration ---
 PROJECT_NAME="ClaudeCage"
 RUNIMAGE_URL="https://github.com/VHSgunzo/runimage/releases/download/continuous/runimage-x86_64"
-ORIGINAL_CWD=$(pwd)
+ORIGINAL_CWD="$(pwd)"
 
 # --- Functions ---
 
@@ -37,6 +37,7 @@ print_error() {
 
 # Cleanup function to be called on script exit
 cleanup() {
+  set +e
   if [ -d "$BUILD_DIR" ]; then
     print_info "Cleaning up temporary build directory..."
     # If the OverlayFS still exists, try to remove it
