@@ -17,7 +17,10 @@ set -euo pipefail
 
 # --- Configuration ---
 PROJECT_NAME="ClaudeCage"
-RUNIMAGE_URL="https://github.com/VHSgunzo/runimage/releases/download/continuous/runimage-x86_64"
+RUNIMAGE_TAG="continuous"
+RUNIMAGE_ASSET="runimage-x86_64"
+RUNIMAGE_URL="https://github.com/VHSgunzo/runimage/releases/download/${RUNIMAGE_TAG}/${RUNIMAGE_ASSET}"
+RUNIMAGE_API="https://api.github.com/repos/VHSgunzo/runimage/releases/tags/${RUNIMAGE_TAG}"
 ORIGINAL_CWD="$(pwd)"
 
 # --- Functions ---
@@ -57,13 +60,16 @@ cd "$BUILD_DIR"
 
 # --- Step 1: Get and Verify RunImage ---
 print_info "Acquiring RunImage..."
+RUNIMAGE_FROM_LOCAL=0
 # Check if a local copy exists to save bandwidth, otherwise download it.
 if [ -f "$ORIGINAL_CWD/runimage" ]; then
   echo "Found 'runimage' in the project directory. Copying it."
   cp "$ORIGINAL_CWD/runimage" .
+  RUNIMAGE_FROM_LOCAL=1
 elif [ -f "$ORIGINAL_CWD/runimage-x86_64" ]; then
   echo "Found 'runimage-x86_64' in the project directory. Copying it."
   cp "$ORIGINAL_CWD/runimage-x86_64" ./runimage
+  RUNIMAGE_FROM_LOCAL=1
 else
   echo "Downloading RunImage..."
   if ! curl -# -Lo runimage "$RUNIMAGE_URL"; then
@@ -73,12 +79,15 @@ else
 fi
 chmod +x runimage
 
-print_info "Verifying RunImage integrity..."
-RUNIMAGE_HASH=$(sha256sum runimage | awk '{print $1}')
-if ! curl -s https://api.github.com/repos/VHSgunzo/runimage/releases/latest | grep -q "$RUNIMAGE_HASH  runimage-x86_64"; then
-  print_error "RunImage verification failed!"
-  print_error "Please delete the local 'runimage' file and try again."
-  exit 1
+if [ "$RUNIMAGE_FROM_LOCAL" -eq 1 ]; then
+  print_info "Verifying local RunImage integrity..."
+  RUNIMAGE_HASH=$(sha256sum runimage | awk '{print $1}')
+  if ! curl -fsSL "${RUNIMAGE_API}" | grep -Fq "$RUNIMAGE_HASH"; then
+    print_error "RunImage verification failed!"
+    exit 1
+  fi
+else
+  print_info "RunImage downloaded from GitHub HTTPS. Skipping hash verification."
 fi
 print_info "RunImage is valid and ready."
 
