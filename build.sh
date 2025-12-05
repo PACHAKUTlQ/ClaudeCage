@@ -187,11 +187,21 @@ RIM_BIND_PWD=1
 # Start the 'claude' command in the same working directory.
 RIM_EXEC_SAME_PWD=1
 
+# Host toolchain access (read-only)
+RIM_BIND_RO="/usr:/usr,/opt:/opt,/etc:/etc"
+[[ -e /lib   ]] && RIM_BIND_RO+=",/lib:/lib"
+[[ -e /lib64 ]] && RIM_BIND_RO+=",/lib64:/lib64"
+[[ -e /bin   ]] && RIM_BIND_RO+=",/bin:/bin"
+[[ -e /sbin  ]] && RIM_BIND_RO+=",/sbin:/sbin"
+
 # For better isolation, unshare other common host resources.
 RIM_UNSHARE_TMP=1
 RIM_UNSHARE_PIDS=1
 RIM_UNSHARE_USERS=1
 RIM_UNSHARE_HOSTNAME=1
+RIM_UNSHARE_DBUS=1
+RIM_UNSHARE_XDGRUN=1
+RIM_UNSHARE_TMPX11UNIX=1
 EOF
 
 # --- Success Message ---
