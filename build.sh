@@ -38,6 +38,10 @@ print_error() {
   echo -e "\e[31m\e[1m[ERROR]\e[0m $1" >&2
 }
 
+# These must exist before trap (set -u)
+BUILD_DIR=""
+BUILD_ID=""
+
 verify_local_runimage() {
   local rim_path="$1"
   print_info "Verifying local RunImage integrity..."
@@ -54,10 +58,10 @@ verify_local_runimage() {
 # Cleanup function to be called on script exit
 cleanup() {
   set +e
-  if [ -d "$BUILD_DIR" ]; then
+  if [[ -n "${BUILD_DIR}" && -d "${BUILD_DIR}" ]]; then
     print_info "Cleaning up temporary build directory..."
     # If the OverlayFS still exists, try to remove it
-    if [ -f "$BUILD_DIR/runimage" ] && [ -n "$BUILD_ID" ]; then
+    if [[ -x "$BUILD_DIR/runimage" && -n "${BUILD_ID}" ]]; then
       "$BUILD_DIR/runimage" rim-ofsrm "$BUILD_ID" &>/dev/null || true
     fi
     rm -rf "$BUILD_DIR"
@@ -90,7 +94,7 @@ else
     exit 1
   fi
 fi
-chmod +x runimage
+chmod +x ./runimage
 
 if [ "$RUNIMAGE_FROM_LOCAL" -eq 1 ]; then
   verify_local_runimage ./runimage
