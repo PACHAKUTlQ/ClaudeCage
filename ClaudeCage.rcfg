@@ -41,6 +41,18 @@ RIM_BIND_RO="/usr:/usr,/opt:/opt,/etc:/etc"
 [[ -e /bin   ]] && RIM_BIND_RO+=",/bin:/bin"
 [[ -e /sbin  ]] && RIM_BIND_RO+=",/sbin:/sbin"
 
+# SSH for git: forward agent socket ONLY (no ~/.ssh by default)
+if [[ -n "${SSH_AUTH_SOCK:-}" && -S "${SSH_AUTH_SOCK}" ]]; then
+  RIM_BIND+=",${SSH_AUTH_SOCK}:/tmp/ssh-agent.sock"
+  export SSH_AUTH_SOCK="/tmp/ssh-agent.sock"
+fi
+
+# If you must allow reading host SSH keys/config (less secure):
+#   CLAUDECAGE_ALLOW_SSH_KEYS=1 ./ClaudeCage ...
+if [[ "${CLAUDECAGE_ALLOW_SSH_KEYS:-0}" == "1" && -d "${HOME}/.ssh" ]]; then
+  RIM_BIND_RO+=",${HOME}/.ssh:${HOME}/.ssh"
+fi
+
 # For better isolation, unshare other common host resources.
 RIM_UNSHARE_TMP=1
 RIM_UNSHARE_PIDS=1
