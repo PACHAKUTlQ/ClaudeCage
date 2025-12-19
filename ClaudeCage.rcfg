@@ -14,6 +14,14 @@ export PATH="/app/bin:/app/bun/bin:/usr/local/sbin:/usr/local/bin:/usr/bin:/bin:
 
 # --- 3. SANDBOXING RULES ---
 
+# Ensure host Claude state exists (host-side)
+umask 077
+install -d -m 700 "${HOME}/.claude"
+if [[ ! -e "${HOME}/.claude.json" ]]; then
+  : > "${HOME}/.claude.json"
+  chmod 600 "${HOME}/.claude.json" || true
+fi
+
 # Bind claude's config, data and cache directory
 RIM_BIND="$HOME/.claude.json:$HOME/.claude.json,$HOME/.claude:$HOME/.claude"
 
