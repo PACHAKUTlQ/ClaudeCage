@@ -38,6 +38,19 @@ print_error() {
   echo -e "\e[31m\e[1m[ERROR]\e[0m $1" >&2
 }
 
+verify_local_runimage() {
+  local rim_path="$1"
+  print_info "Verifying local RunImage integrity..."
+  local hash
+  hash="$(sha256sum "$rim_path" | awk '{print $1}')"
+  if ! curl -fsSL "${RUNIMAGE_API}" | grep -Fq "$hash"; then
+    print_error "RunImage verification failed!"
+    print_error "Hash: $hash"
+    print_error "API:  ${RUNIMAGE_API}"
+    exit 1
+  fi
+}
+
 # Cleanup function to be called on script exit
 cleanup() {
   set +e
@@ -72,7 +85,7 @@ elif [ -f "$ORIGINAL_CWD/runimage-x86_64" ]; then
   RUNIMAGE_FROM_LOCAL=1
 else
   echo "Downloading RunImage..."
-  if ! curl -# -Lo runimage "$RUNIMAGE_URL"; then
+  if ! curl -fL# -o runimage "$RUNIMAGE_URL"; then
     print_error "Failed to download RunImage. Please check your internet connection."
     exit 1
   fi
@@ -80,12 +93,7 @@ fi
 chmod +x runimage
 
 if [ "$RUNIMAGE_FROM_LOCAL" -eq 1 ]; then
-  print_info "Verifying local RunImage integrity..."
-  RUNIMAGE_HASH=$(sha256sum runimage | awk '{print $1}')
-  if ! curl -fsSL "${RUNIMAGE_API}" | grep -Fq "$RUNIMAGE_HASH"; then
-    print_error "RunImage verification failed!"
-    exit 1
-  fi
+  verify_local_runimage ./runimage
 else
   print_info "RunImage downloaded from GitHub HTTPS. Skipping hash verification."
 fi
