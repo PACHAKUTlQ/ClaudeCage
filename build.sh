@@ -51,6 +51,7 @@ verify_local_runimage() {
     print_error "RunImage verification failed!"
     print_error "Hash: $hash"
     print_error "API:  ${RUNIMAGE_API}"
+    print_error "Delete/replace your local '${RUNIMAGE_ASSET}' (or 'runimage') and retry."
     exit 1
   fi
 }
