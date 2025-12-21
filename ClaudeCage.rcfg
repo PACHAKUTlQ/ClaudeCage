@@ -21,7 +21,7 @@ if [[ ! -e "${HOME}/.claude.json" ]]; then
 fi
 
 # Persist Claude state in standard host locations
-RIM_BIND="$HOME/.claude.json:$HOME/.claude.json,$HOME/.claude:$HOME/.claude"
+RIM_BIND="${HOME}/.claude.json:${HOME}/.claude.json,${HOME}/.claude:${HOME}/.claude"
 
 # Writable container HOME (tmpfs), while explicit binds above persist on host
 RIM_TMP_HOME=1

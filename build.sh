@@ -46,10 +46,10 @@ verify_local_runimage() {
   local rim_path="$1"
   print_info "Verifying local RunImage integrity..."
   local hash
-  hash="$(sha256sum "$rim_path" | awk '{print $1}')"
-  if ! curl -fsSL "${RUNIMAGE_API}" | grep -Fq "$hash"; then
+  hash="$(sha256sum "${rim_path}" | awk '{print $1}')"
+  if ! curl -fsSL "${RUNIMAGE_API}" | grep -Fq "${hash}"; then
     print_error "RunImage verification failed!"
-    print_error "Hash: $hash"
+    print_error "Hash: ${hash}"
     print_error "API:  ${RUNIMAGE_API}"
     print_error "Delete/replace your local '${RUNIMAGE_ASSET}' (or 'runimage') and retry."
     exit 1
@@ -62,10 +62,10 @@ cleanup() {
   if [[ -n "${BUILD_DIR:-}" && -d "${BUILD_DIR:-}" ]]; then
     print_info "Cleaning up temporary build directory..."
     # If the OverlayFS still exists, try to remove it
-    if [[ -x "$BUILD_DIR/runimage" && -n "${BUILD_ID:-}" ]]; then
-      "$BUILD_DIR/runimage" rim-ofsrm "$BUILD_ID" &>/dev/null || true
+    if [[ -x "${BUILD_DIR}/runimage" && -n "${BUILD_ID:-}" ]]; then
+      "${BUILD_DIR}/runimage" rim-ofsrm "${BUILD_ID}" &>/dev/null || true
     fi
-    rm -rf "$BUILD_DIR"
+    rm -rf "${BUILD_DIR}"
   fi
 }
 
@@ -74,16 +74,16 @@ trap cleanup EXIT ERR INT
 # --- Script Start ---
 
 BUILD_DIR=$(mktemp -d -t claude-cage-build-XXXXXX)
-print_info "Created temporary build directory at: $BUILD_DIR"
-cd "$BUILD_DIR"
+print_info "Created temporary build directory at: ${BUILD_DIR}"
+cd "${BUILD_DIR}"
 
 # --- Step 1: Get and Verify RunImage ---
 print_info "Acquiring RunImage..."
 RUNIMAGE_FROM_LOCAL=0
 # Check if a local copy exists to save bandwidth, otherwise download it.
-if [ -f "$ORIGINAL_CWD/runimage" ]; then
+if [ -f "${ORIGINAL_CWD}/runimage" ]; then
   echo "Found 'runimage' in the project directory. Copying it."
-  cp "$ORIGINAL_CWD/runimage" .
+  cp "${ORIGINAL_CWD}/runimage" .
   RUNIMAGE_FROM_LOCAL=1
 elif [ -f "${ORIGINAL_CWD}/${RUNIMAGE_ASSET}" ]; then
   echo "Found '${RUNIMAGE_ASSET}' in the project directory. Copying it."
@@ -91,14 +91,14 @@ elif [ -f "${ORIGINAL_CWD}/${RUNIMAGE_ASSET}" ]; then
   RUNIMAGE_FROM_LOCAL=1
 else
   echo "Downloading RunImage..."
-  if ! curl -fL# -o runimage "$RUNIMAGE_URL"; then
+  if ! curl -fL# -o runimage "${RUNIMAGE_URL}"; then
     print_error "Failed to download RunImage. Please check your internet connection."
     exit 1
   fi
 fi
 chmod +x ./runimage
 
-if [ "$RUNIMAGE_FROM_LOCAL" -eq 1 ]; then
+if [ "${RUNIMAGE_FROM_LOCAL}" -eq 1 ]; then
   verify_local_runimage ./runimage
 else
   print_info "RunImage downloaded from GitHub HTTPS. Skipping hash verification."
@@ -118,17 +118,17 @@ echo "Installing dependencies: curl, unzip and ca-certificates..."
 pac -Syu --noconfirm --needed curl unzip ca-certificates
 
 export BUN_INSTALL="/app/bun"
-export PATH="$BUN_INSTALL/bin:$PATH"
+export PATH="${BUN_INSTALL}/bin:$PATH"
 
-echo "Installing bun to $BUN_INSTALL..."
-mkdir -p "$BUN_INSTALL"
+echo "Installing bun to ${BUN_INSTALL}..."
+mkdir -p "${BUN_INSTALL}"
 curl -fsSL https://bun.sh/install | bash
 
 echo "Verifying bun installation..."
-$BUN_INSTALL/bin/bun --version
+${BUN_INSTALL}/bin/bun --version
 
 echo "Installing @anthropic-ai/claude-code..."
-$BUN_INSTALL/bin/bun install -g @anthropic-ai/claude-code
+${BUN_INSTALL}/bin/bun install -g @anthropic-ai/claude-code
 
 echo "Creating wrapper at /app/bin/claude..."
 install -d -m 0755 /app/bin
@@ -156,9 +156,9 @@ BUILD_ID="claude-cage-build-$$"
 # Run the setup script inside the container's temporary "workshop" environment.
 # RIM_OVERFS_ID/RIM_KEEP_OVERFS: Manages the writable layer.
 # RIM_BIND: Mounts the build directory so the container can access the setup script.
-if ! RIM_OVERFS_ID="$BUILD_ID" \
+if ! RIM_OVERFS_ID="${BUILD_ID}" \
   RIM_KEEP_OVERFS=1 \
-  RIM_BIND="$PWD:/build" \
+  RIM_BIND="${PWD}:/build" \
   ./runimage rim-shell -c "bash /build/setup_in_container.sh"; then
   print_error "The container setup script failed."
   exit 1
@@ -167,7 +167,7 @@ fi
 # --- Step 4: Build the Final Executable ---
 print_info "Container setup was successful. Now building the final executable..."
 # Use the OverlayFS to build the new, self-contained RunImage.
-if ! RIM_OVERFS_ID="$BUILD_ID" \
+if ! RIM_OVERFS_ID="${BUILD_ID}" \
   ./runimage rim-build "./${PROJECT_NAME}"; then
   print_error "Failed to build the final ${PROJECT_NAME} executable."
   exit 1
@@ -175,10 +175,10 @@ fi
 
 # --- Step 5: Finalize and Create Config ---
 print_info "Finalizing the build..."
-mv "./${PROJECT_NAME}" "$ORIGINAL_CWD/"
+mv "./${PROJECT_NAME}" "${ORIGINAL_CWD}/"
 
 print_info "Creating the sandbox configuration file (${PROJECT_NAME}.rcfg)..."
-cat <<'EOF' >"$ORIGINAL_CWD/${PROJECT_NAME}.rcfg"
+cat <<'EOF' >"${ORIGINAL_CWD}/${PROJECT_NAME}.rcfg"
 #!/hint/bash
 # ClaudeCage RunImage config (.rcfg)
 
@@ -202,7 +202,7 @@ if [[ ! -e "${HOME}/.claude.json" ]]; then
 fi
 
 # Persist Claude state in standard host locations
-RIM_BIND="$HOME/.claude.json:$HOME/.claude.json,$HOME/.claude:$HOME/.claude"
+RIM_BIND="${HOME}/.claude.json:${HOME}/.claude.json,${HOME}/.claude:${HOME}/.claude"
 
 # Writable container HOME (tmpfs), while explicit binds above persist on host
 RIM_TMP_HOME=1
