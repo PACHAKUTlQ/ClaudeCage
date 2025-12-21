@@ -84,9 +84,9 @@ if [ -f "$ORIGINAL_CWD/runimage" ]; then
   echo "Found 'runimage' in the project directory. Copying it."
   cp "$ORIGINAL_CWD/runimage" .
   RUNIMAGE_FROM_LOCAL=1
-elif [ -f "$ORIGINAL_CWD/runimage-x86_64" ]; then
-  echo "Found 'runimage-x86_64' in the project directory. Copying it."
-  cp "$ORIGINAL_CWD/runimage-x86_64" ./runimage
+elif [ -f "${ORIGINAL_CWD}/${RUNIMAGE_ASSET}" ]; then
+  echo "Found '${RUNIMAGE_ASSET}' in the project directory. Copying it."
+  cp "${ORIGINAL_CWD}/${RUNIMAGE_ASSET}" ./runimage
   RUNIMAGE_FROM_LOCAL=1
 else
   echo "Downloading RunImage..."
