@@ -68,9 +68,10 @@ cleanup() {
   fi
 }
 
+trap cleanup EXIT ERR INT
+
 # --- Script Start ---
 
-trap cleanup EXIT ERR INT
 BUILD_DIR=$(mktemp -d -t claude-cage-build-XXXXXX)
 print_info "Created temporary build directory at: $BUILD_DIR"
 cd "$BUILD_DIR"
