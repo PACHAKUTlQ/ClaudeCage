@@ -58,10 +58,10 @@ verify_local_runimage() {
 # Cleanup function to be called on script exit
 cleanup() {
   set +e
-  if [[ -n "${BUILD_DIR}" && -d "${BUILD_DIR}" ]]; then
+  if [[ -n "${BUILD_DIR:-}" && -d "${BUILD_DIR:-}" ]]; then
     print_info "Cleaning up temporary build directory..."
     # If the OverlayFS still exists, try to remove it
-    if [[ -x "$BUILD_DIR/runimage" && -n "${BUILD_ID}" ]]; then
+    if [[ -x "$BUILD_DIR/runimage" && -n "${BUILD_ID:-}" ]]; then
       "$BUILD_DIR/runimage" rim-ofsrm "$BUILD_ID" &>/dev/null || true
     fi
     rm -rf "$BUILD_DIR"
@@ -176,7 +176,7 @@ print_info "Finalizing the build..."
 mv "./${PROJECT_NAME}" "$ORIGINAL_CWD/"
 
 print_info "Creating the sandbox configuration file (${PROJECT_NAME}.rcfg)..."
-cat <<EOF >"$ORIGINAL_CWD/${PROJECT_NAME}.rcfg"
+cat <<'EOF' >"$ORIGINAL_CWD/${PROJECT_NAME}.rcfg"
 #!/hint/bash
 # ClaudeCage RunImage config (.rcfg)
 
