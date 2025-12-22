@@ -14,7 +14,7 @@
 
 Probably not... **but why risk it?**
 
-**ClaudeCage** solves this by packaging the `claude-code` CLI into a fully isolated, single-file container. It cannot access any part of your system except for the single project directory you are currently working in.
+**ClaudeCage** solves this by packaging the Claude Code CLI into a fully isolated, single-file container. It cannot access any part of your system except for the single project directory you are currently working in.
 
 > **Breaking change:** the build output is now named **`claude`** (plus **`claude.rcfg`**), so it can act as a **drop-in replacement** for the original `claude` CLI (but sandboxed).
 
@@ -30,7 +30,7 @@ Probably not... **but why risk it?**
 
 ## How It Works
 
-ClaudeCage is built using the [**RunImage**](https://github.com/VHSgunzo/runimage) project, which leverages [**Bubblewrap**](https://github.com/containers/bubblewrap) to create lightweight, unprivileged containers. This project provides a simple build script to automate the creation of a custom RunImage container specifically for `claude-code`.
+ClaudeCage is built using the [**RunImage**](https://github.com/VHSgunzo/runimage) project, which leverages [**Bubblewrap**](https://github.com/containers/bubblewrap) to create lightweight, unprivileged containers. This project provides a simple build script to automate the creation of a custom RunImage container specifically for Claude Code.
 
 ## Usage
 

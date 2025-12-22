@@ -14,7 +14,7 @@
 
 也许不会……**但何必冒险呢？**
 
-**ClaudeCage** 通过将 `claude-code` CLI 打包到一个完全隔离的、单一文件的容器中来解决这个问题。除了你当前工作的项目目录外，它无法访问你系统的任何其他部分。
+**ClaudeCage** 通过将 Claude Code CLI 打包到一个完全隔离的、单一文件的容器中来解决这个问题。除了你当前工作的项目目录外，它无法访问你系统的任何其他部分。
 
 > **破坏性变更：** 构建产物现在命名为 **`claude`**（以及 **`claude.rcfg`**），可以作为原版 `claude` 的**无缝替换**（但运行在沙箱中）。
 
@@ -30,7 +30,7 @@
 
 ## 工作原理
 
-ClaudeCage 使用 [**RunImage**](https://github.com/VHSgunzo/runimage) 项目构建，该项目利用 [**Bubblewrap**](https://github.com/containers/bubblewrap) 来创建轻量级的、非特权的容器。本项目提供了一个简单的构建脚本，用于自动为 `claude-code` 创建一个定制的 RunImage 容器。
+ClaudeCage 使用 [**RunImage**](https://github.com/VHSgunzo/runimage) 项目构建，该项目利用 [**Bubblewrap**](https://github.com/containers/bubblewrap) 来创建轻量级的、非特权的容器。本项目提供了一个简单的构建脚本，用于自动为 Claude Code 创建一个定制的 RunImage 容器。
 
 ## 使用方法
 
