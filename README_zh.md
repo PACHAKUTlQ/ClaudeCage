@@ -24,6 +24,7 @@
 - **兼容大多数 Linux 发行版**: 几乎可以在任何现代 Linux 发行版上运行。
 - **更佳的性能**: 以原生速度运行。得益于现代化的高性能 JavaScript 运行时：[**bun**](https://github.com/oven-sh/bun)，它的运行速度甚至比官方的 Claude Code 更快。
 - **支持自定义 API**: 可以轻松配置它以使用自定义 API 端点，包括 OpenAI 代理。
+- **可使用宿主机工具链（只读）**: 默认会把常见系统目录（如 `/usr`、`/etc`、`/opt`）以只读方式挂载进沙箱，Claude 可以直接调用你已有的编译器/工具，但不能修改这些目录。
 
 ## 工作原理
 
@@ -68,6 +69,43 @@ ClaudeCage "重构这个函数，使其更高效。" # 现在 Claude Code 只能
 ```
 
 ## 配置
+
+### 默认挂载与隔离策略
+
+你可以直接编辑 `ClaudeCage.rcfg` 来自定义沙箱能看到什么。默认配置的目标是：开箱即用，同时尽量避免泄露宿主机敏感数据。
+
+**Claude 状态持久化（宿主机侧）：**
+
+- 启动时会在宿主机上确保以下路径存在（不存在会自动创建）：
+  - `$HOME/.claude/`（权限 `700`）
+  - `$HOME/.claude.json`（权限 `600`）
+- 并将它们以读写方式绑定进沙箱，使登录/配置/历史等可以跨运行持久化：
+  - `$HOME/.claude.json`（读写）
+  - `$HOME/.claude/`（读写）
+
+**项目目录：**
+
+- 当前工作目录会绑定进沙箱（Claude 可读写你的项目）。
+- 并在相同的工作目录启动命令。
+
+**宿主机系统/工具（只读）：**
+
+- 常见路径会以只读方式挂载，让 Claude 可以调用宿主机工具：
+  - `/usr`、`/opt`、`/etc`
+  - 以及（如果存在）：`/lib`、`/lib64`、`/bin`、`/sbin`
+
+**SSH（默认更安全）：**
+
+- 如果检测到 `SSH_AUTH_SOCK`，只转发 **agent socket** 进入沙箱（默认不会给 `$HOME/.ssh`）。
+- 如果你确实需要把宿主机 SSH 密钥/配置暴露给沙箱（更不安全），可以手动开启：
+
+```bash
+CLAUDECAGE_ALLOW_SSH_KEYS=1 ClaudeCage "Clone and inspect this repo."
+```
+
+**默认开启的额外隔离项：**
+
+- 默认还会额外隔离 DBus、XDG runtime、X11 tmp socket 等资源，并同时隔离 PIDs/users/hostname/tmp。
 
 ### 自定义 API 端点和代理
 

@@ -24,6 +24,7 @@ Probably not... **but why risk it?**
 - **Works on Most Linux Distros**: Runs on virtually any modern Linux distribution.
 - **Better Performance**: Runs at native speed. It runs even faster than official Claude Code thanks to the modern high performance javascript runtime: [**bun**](https://github.com/oven-sh/bun).
 - **Custom API Support**: Easily configure it to use custom API endpoints, including OpenAI proxies.
+- **Host Toolchain Access (Read-only)**: By default, common system directories (like `/usr`, `/etc`, `/opt`) are mounted read-only so Claude can use your existing compilers/tools without being able to modify them.
 
 ## How It Works
 
@@ -68,6 +69,43 @@ ClaudeCage "Refactor this function to be more efficient." # Claude Code now has 
 ```
 
 ## Configuration
+
+### Sandbox mounts & isolation (default)
+
+You can edit `ClaudeCage.rcfg` to customize what the sandbox can see. The default config is designed to be usable out-of-the-box while keeping sensitive host data out.
+
+**Persisted Claude state (host):**
+
+- On startup, the config ensures these exist on the host (created if missing):
+  - `$HOME/.claude/` (mode `700`)
+  - `$HOME/.claude.json` (mode `600`)
+- Then it bind-mounts them into the sandbox (so your login/config/history persist across runs):
+  - `$HOME/.claude.json` (read-write)
+  - `$HOME/.claude/` (read-write)
+
+**Project directory:**
+
+- The current working directory is bind-mounted into the sandbox (so Claude can read/write your project).
+- The command starts in the same working directory.
+
+**Host system/tooling (read-only):**
+
+- Common paths are mounted read-only so Claude can invoke host tools:
+  - `/usr`, `/opt`, `/etc`
+  - And, if present: `/lib`, `/lib64`, `/bin`, `/sbin`
+
+**SSH (safe-by-default):**
+
+- If `SSH_AUTH_SOCK` is set, ClaudeCage forwards **only the agent socket** into the sandbox (no direct access to your `$HOME/.ssh` by default).
+- If you really need host SSH keys/config inside the sandbox (less secure), you can opt in:
+
+```bash
+CLAUDECAGE_ALLOW_SSH_KEYS=1 ClaudeCage "Clone and inspect this repo."
+```
+
+**Extra isolation knobs enabled by default:**
+
+- Additional unshares are enabled (like DBus, XDG runtime, X11 tmp socket), in addition to PIDs/users/hostname/tmp.
 
 ### Custom API Endpoints & Proxies
 
