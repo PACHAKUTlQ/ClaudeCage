@@ -8,7 +8,7 @@ echo "Installing dependencies: curl, unzip and ca-certificates..."
 pac -Syu --noconfirm --needed curl unzip ca-certificates
 
 export BUN_INSTALL="/app/bun"
-export PATH="${BUN_INSTALL}/bin:$PATH"
+export PATH="${BUN_INSTALL}/bin:${PATH}"
 
 echo "Installing bun to ${BUN_INSTALL}..."
 mkdir -p "${BUN_INSTALL}"
