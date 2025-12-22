@@ -16,6 +16,8 @@ Probably not... **but why risk it?**
 
 **ClaudeCage** solves this by packaging the `claude-code` CLI into a fully isolated, single-file container. It cannot access any part of your system except for the single project directory you are currently working in.
 
+> **Breaking change:** the build output is now named **`claude`** (plus **`claude.rcfg`**), so it can act as a **drop-in replacement** for the original `claude` CLI (but sandboxed).
+
 ## Features
 
 - **Secure Sandbox**: Powered by Linux namespaces, the `claude` process is heavily restricted and cannot access your home directory, network information, or other processes.
@@ -36,7 +38,7 @@ ClaudeCage is built using the [**RunImage**](https://github.com/VHSgunzo/runimag
 
 #### Download pre-built binary
 
-Download `ClaudeCage` binary and `ClaudeCage.rcfg` config file, copy both files to a location in your `$PATH`, like `~/.local/bin/`.
+Download `claude` binary and `claude.rcfg` config file, copy both files to a location in your `$PATH`, like `~/.local/bin/`.
 
 #### Build from Source
 
@@ -50,29 +52,41 @@ cd ClaudeCage
 
 The script will download the necessary components and create two files in the current directory:
 
-- `ClaudeCage`: The portable executable.
-- `ClaudeCage.rcfg`: The sandbox configuration file.
+- `claude`: The portable executable.
+- `claude.rcfg`: The sandbox configuration file.
 
 ### 2. Run ClaudeCage
 
-Move both the `ClaudeCage` executable and the `.rcfg` file to a location in your `$PATH`, like `~/.local/bin/`.
+Move both the `claude` executable and the `.rcfg` file to a location in your `$PATH`, like `~/.local/bin/`.
 
 ```bash
-mv ClaudeCage ClaudeCage.rcfg ~/.local/bin/
+mv claude claude.rcfg ~/.local/bin/
 ```
 
 Now, you can use it just like the regular `claude` command. Navigate to any project directory and run it. It will only have access to that directory.
 
 ```bash
 cd /path/to/my/awesome-project
-ClaudeCage "Refactor this function to be more efficient." # Claude Code now has access to this directory only
+claude "Refactor this function to be more efficient." # Claude now has access to this directory only
+```
+
+### Avoiding conflicts with your original `claude`
+
+Because the output is named `claude`, installing it into your `$PATH` will likely **override** your original `claude`.
+
+If you want to keep both, **rename the pair to the same basename** (the `.rcfg` must match the executable name):
+
+```bash
+mv claude claude-cage
+mv claude.rcfg claude-cage.rcfg
+./claude-cage "Hello from sandbox"
 ```
 
 ## Configuration
 
 ### Sandbox mounts & isolation (default)
 
-You can edit `ClaudeCage.rcfg` to customize what the sandbox can see. The default config is designed to be usable out-of-the-box while keeping sensitive host data out.
+You can edit `claude.rcfg` to customize what the sandbox can see. The default config is designed to be usable out-of-the-box while keeping sensitive host data out.
 
 **Persisted Claude state (host):**
 
@@ -100,7 +114,7 @@ You can edit `ClaudeCage.rcfg` to customize what the sandbox can see. The defaul
 - If you really need host SSH keys/config inside the sandbox (less secure), you can opt in:
 
 ```bash
-CLAUDECAGE_ALLOW_SSH_KEYS=1 ClaudeCage "Clone and inspect this repo."
+CLAUDECAGE_ALLOW_SSH_KEYS=1 claude "Clone and inspect this repo."
 ```
 
 **Extra isolation knobs enabled by default:**
@@ -118,7 +132,7 @@ export ANTHROPIC_AUTH_TOKEN="not-needed-when-using-local-proxy"
 export ANTHROPIC_MODEL="anthropic/claude-sonnet-4"
 export ANTHROPIC_SMALL_FAST_MODEL="google/gemini-2.0-flash"
 
-ClaudeCage "What is the capital of Nebraska?"
+claude "What is the capital of Nebraska?"
 ```
 
 See the official [claude-code settings documentation](https://docs.anthropic.com/en/docs/claude-code/settings#environment-variables) for more details.

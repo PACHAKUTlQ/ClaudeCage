@@ -16,6 +16,8 @@
 
 **ClaudeCage** 通过将 `claude-code` CLI 打包到一个完全隔离的、单一文件的容器中来解决这个问题。除了你当前工作的项目目录外，它无法访问你系统的任何其他部分。
 
+> **破坏性变更：** 构建产物现在命名为 **`claude`**（以及 **`claude.rcfg`**），可以作为原版 `claude` 的**无缝替换**（但运行在沙箱中）。
+
 ## 功能特性
 
 - **安全沙箱**: 基于 Linux 命名空间 (namespaces) 技术，`claude` 进程受到严格限制，无法访问你的主目录、网络信息或其他进程。
@@ -36,7 +38,7 @@ ClaudeCage 使用 [**RunImage**](https://github.com/VHSgunzo/runimage) 项目构
 
 #### 下载预构建的二进制文件
 
-下载 `ClaudeCage` 二进制文件和 `ClaudeCage.rcfg` 配置文件，将这两个文件复制到你的 `$PATH` 路径下的某个位置，例如 `~/.local/bin/`。
+下载 `claude` 二进制文件和 `claude.rcfg` 配置文件，将这两个文件复制到你的 `$PATH` 路径下的某个位置，例如 `~/.local/bin/`。
 
 #### 从源码构建
 
@@ -50,29 +52,41 @@ cd ClaudeCage
 
 该脚本将下载必要的组件，并在当前目录下创建两个文件：
 
-- `ClaudeCage`：可移植的可执行文件。
-- `ClaudeCage.rcfg`：沙箱配置文件。
+- `claude`：可移植的可执行文件。
+- `claude.rcfg`：沙箱配置文件。
 
 ### 2. 运行 ClaudeCage
 
-将 `ClaudeCage` 可执行文件和 `.rcfg` 文件都移动到你的 `$PATH` 路径下的某个位置，例如 `~/.local/bin/`。
+将 `claude` 可执行文件和 `.rcfg` 文件都移动到你的 `$PATH` 路径下的某个位置，例如 `~/.local/bin/`。
 
 ```bash
-mv ClaudeCage ClaudeCage.rcfg ~/.local/bin/
+mv claude claude.rcfg ~/.local/bin/
 ```
 
 现在，你可以像使用常规 `claude` 命令一样使用它。进入任何项目目录并运行它。它将只能访问该目录。
 
 ```bash
 cd /path/to/my/awesome-project
-ClaudeCage "重构这个函数，使其更高效。" # 现在 Claude Code 只能访问这个目录
+claude "重构这个函数，使其更高效。" # 现在 Claude 只能访问这个目录
+```
+
+### 避免与原版 `claude` 冲突
+
+由于产物名就是 `claude`，把它放进 `$PATH` 后通常会**覆盖**你原本安装的 `claude`。
+
+如果你希望两者共存，请把这两个文件**一起改名为同一个前缀**（`.rcfg` 必须与可执行文件同名）：
+
+```bash
+mv claude claude-cage
+mv claude.rcfg claude-cage.rcfg
+./claude-cage "Hello from sandbox"
 ```
 
 ## 配置
 
 ### 默认挂载与隔离策略
 
-你可以直接编辑 `ClaudeCage.rcfg` 来自定义沙箱能看到什么。默认配置的目标是：开箱即用，同时尽量避免泄露宿主机敏感数据。
+你可以直接编辑 `claude.rcfg` 来自定义沙箱能看到什么。默认配置的目标是：开箱即用，同时尽量避免泄露宿主机敏感数据。
 
 **Claude 状态持久化（宿主机侧）：**
 
@@ -100,7 +114,7 @@ ClaudeCage "重构这个函数，使其更高效。" # 现在 Claude Code 只能
 - 如果你确实需要把宿主机 SSH 密钥/配置暴露给沙箱（更不安全），可以手动开启：
 
 ```bash
-CLAUDECAGE_ALLOW_SSH_KEYS=1 ClaudeCage "Clone and inspect this repo."
+CLAUDECAGE_ALLOW_SSH_KEYS=1 claude "Clone and inspect this repo."
 ```
 
 **默认开启的额外隔离项：**
@@ -118,7 +132,7 @@ export ANTHROPIC_AUTH_TOKEN="使用本地代理时无需此项"
 export ANTHROPIC_MODEL="anthropic/claude-sonnet-4"
 export ANTHROPIC_SMALL_FAST_MODEL="google/gemini-2.0-flash"
 
-ClaudeCage "内布拉斯加州的首府是哪里？"
+claude "内布拉斯加州的首府是哪里？"
 ```
 
 更多详情，请参阅官方的 [claude-code 设置文档](https://docs.anthropic.com/en/docs/claude-code/settings#environment-variables)。
