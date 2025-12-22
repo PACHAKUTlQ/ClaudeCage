@@ -8,15 +8,15 @@
 # temporary directory and does not modify the host system.
 #
 # The final output is two files:
-#   - 'ClaudeCage': The single-file executable.
-#   - 'ClaudeCage.rcfg': The sandboxing configuration file.
+#   - 'claude': The single-file executable.
+#   - 'claude.rcfg': The sandboxing configuration file.
 # ==============================================================================
 
 # Exit immediately if a command exits with a non-zero status.
 set -euo pipefail
 
 # --- Configuration ---
-PROJECT_NAME="ClaudeCage"
+PROJECT_NAME="claude"
 RUNIMAGE_TAG="continuous"
 RUNIMAGE_ASSET="runimage-x86_64"
 RUNIMAGE_URL="https://github.com/VHSgunzo/runimage/releases/download/${RUNIMAGE_TAG}/${RUNIMAGE_ASSET}"
