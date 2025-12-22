@@ -121,13 +121,29 @@ CLAUDECAGE_ALLOW_SSH_KEYS=1 claude "Clone and inspect this repo."
 
 - Additional unshares are enabled (like DBus, XDG runtime, X11 tmp socket), in addition to PIDs/users/hostname/tmp.
 
-### Custom API Endpoints & Proxies
+### Use other model providers easily (via Claude Code Router)
 
-You can make `claude-code` use a custom API endpoint (including OpenAI proxies like [claude-code-proxy](https://github.com/fuergaosi233/claude-code-proxy)) by setting environment variables _before_ running ClaudeCage. claude-code-proxy is _NOT_ integrated into this project.
+If you want to route Claude Code requests to other providers/models (OpenRouter, DeepSeek, Ollama, Gemini, etc.), use the external project **Claude Code Router**:
+
+- https://github.com/musistudio/claude-code-router
+
+This is **not part of ClaudeCage**. Please refer to its README for full configuration details.
+
+Minimal usage:
 
 ```bash
-# Example for using claude-code-proxy that translate API calls to OpenAI API format.
-export ANTHROPIC_BASE_URL="http://localhost:8082/"
+npm install -g @musistudio/claude-code-router
+ccr start
+```
+
+Because ClaudeCage installs a `claude` binary into your `${PATH}` (drop-in replacement), when Claude Code Router runs `claude`, it will automatically invoke the **sandboxed** ClaudeCage `claude`.
+
+### Custom API Endpoints & Proxies
+
+claude-code-router `ccr start` auto configures env variables and invokes Claude Code. If you like the manual way or don't want to use claude-code-router, you can make Claude Code use a custom API endpoint by setting the following environment variables _before_ running ClaudeCage:
+
+```bash
+export ANTHROPIC_BASE_URL="http://localhost:3456/"
 export ANTHROPIC_AUTH_TOKEN="not-needed-when-using-local-proxy"
 export ANTHROPIC_MODEL="anthropic/claude-sonnet-4"
 export ANTHROPIC_SMALL_FAST_MODEL="google/gemini-2.0-flash"
@@ -144,4 +160,4 @@ This project would be impossible without the fantastic work of the following ope
 - [**RunImage**](https://github.com/VHSgunzo/runimage) for making single-file, portable Linux containers a reality.
 - [**Bubblewrap**](https://github.com/containers/bubblewrap) for providing the low-level sandboxing technology.
 - [**Bun**](https://github.com/oven-sh/bun) as modern, high performance, node.js-compatible javascript runtime.
-- [**claude-code-proxy**](https://github.com/fuergaosi233/claude-code-proxy) for recommended OpenAI format API proxy.
+- [**claude-code-router**](https://github.com/musistudio/claude-code-router) (external) for routing Claude Code requests to multiple model providers.

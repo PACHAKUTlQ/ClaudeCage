@@ -121,13 +121,29 @@ CLAUDECAGE_ALLOW_SSH_KEYS=1 claude "Clone and inspect this repo."
 
 - 默认还会额外隔离 DBus、XDG runtime、X11 tmp socket 等资源，并同时隔离 PIDs/users/hostname/tmp。
 
-### 自定义 API 端点和代理
+### 轻松使用其他模型供应商（通过 Claude Code Router）
 
-你可以在运行 ClaudeCage _之前_ 通过设置环境变量，让 `claude-code` 使用自定义的 API 端点（包括像 [claude-code-proxy](https://github.com/fuergaosi233/claude-code-proxy) 这样的 OpenAI 代理）。claude-code-proxy 并 _没有_ 集成到本项目中。
+如果你希望把 Claude Code 的请求转发/路由到其他供应商与模型（OpenRouter、DeepSeek、Ollama、Gemini 等），推荐使用外部项目 **Claude Code Router**：
+
+- https://github.com/musistudio/claude-code-router
+
+它**不属于 ClaudeCage**，详细配置请直接参考该项目的 README。
+
+最简用法：
 
 ```bash
-# 使用 claude-code-proxy 将 API 调用转换为 OpenAI API 格式的示例。
-export ANTHROPIC_BASE_URL="http://localhost:8082/"
+npm install -g @musistudio/claude-code-router
+ccr start
+```
+
+由于 ClaudeCage 在 `${PATH}` 中提供了同名的 `claude`（可无缝替换），Claude Code Router 在调用 `claude` 时会自动使用 **沙箱版** 的 ClaudeCage `claude`。
+
+### 自定义 API 端点和代理
+
+claude-code-router `ccr start` 自动设置环境变量并调用 Claude Code。如果你希望手动设置或者不想使用claude-code-router，你可以在运行 ClaudeCage _之前_ 通过设置环境变量，让 Claude Code 使用自定义的 API 端点：
+
+```bash
+export ANTHROPIC_BASE_URL="http://localhost:3456/"
 export ANTHROPIC_AUTH_TOKEN="使用本地代理时无需此项"
 export ANTHROPIC_MODEL="anthropic/claude-sonnet-4"
 export ANTHROPIC_SMALL_FAST_MODEL="google/gemini-2.0-flash"
@@ -144,4 +160,4 @@ claude "内布拉斯加州的首府是哪里？"
 - [**RunImage**](https://github.com/VHSgunzo/runimage)：让单文件、可移植的 Linux 容器成为现实。
 - [**Bubblewrap**](https://github.com/containers/bubblewrap)：提供了底层的沙箱技术。
 - [**Bun**](https://github.com/oven-sh/bun)：一个现代化、高性能、兼容 Node.js 的 JavaScript 运行时。
-- [**claude-code-proxy**](https://github.com/fuergaosi233/claude-code-proxy)：推荐的 OpenAI 格式 API 代理。
+- [**claude-code-router**](https://github.com/musistudio/claude-code-router)（外部项目）：用于将 Claude Code 的请求路由到多种模型供应商。
