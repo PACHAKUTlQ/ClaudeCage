@@ -38,7 +38,7 @@ ClaudeCage is built using the [**RunImage**](https://github.com/VHSgunzo/runimag
 
 #### Download pre-built binary
 
-Download `claude` binary and `claude.rcfg` config file, copy both files to a location in your `$PATH`, like `~/.local/bin/`.
+Download `claude` binary and `claude.rcfg` config file, copy both files to a location in your `${PATH}`, like `~/.local/bin/`.
 
 #### Build from Source
 
@@ -57,7 +57,7 @@ The script will download the necessary components and create two files in the cu
 
 ### 2. Run ClaudeCage
 
-Move both the `claude` executable and the `.rcfg` file to a location in your `$PATH`, like `~/.local/bin/`.
+Move both the `claude` executable and the `.rcfg` file to a location in your `${PATH}`, like `~/.local/bin/`.
 
 ```bash
 mv claude claude.rcfg ~/.local/bin/
@@ -72,7 +72,7 @@ claude "Refactor this function to be more efficient." # Claude now has access to
 
 ### Avoiding conflicts with your original `claude`
 
-Because the output is named `claude`, installing it into your `$PATH` will likely **override** your original `claude`.
+Because the output is named `claude`, installing it into your `${PATH}` will likely **override** your original `claude`. (Not necessarily replace, as the recommendation is put `claude` and `claude.rcfg` in `~/.local/bin` instead of `/usr/bin`.)
 
 If you want to keep both, **rename the pair to the same basename** (the `.rcfg` must match the executable name):
 
@@ -91,11 +91,11 @@ You can edit `claude.rcfg` to customize what the sandbox can see. The default co
 **Persisted Claude state (host):**
 
 - On startup, the config ensures these exist on the host (created if missing):
-  - `$HOME/.claude/` (mode `700`)
-  - `$HOME/.claude.json` (mode `600`)
+  - `${HOME}/.claude/` (mode `700`)
+  - `${HOME}/.claude.json` (mode `600`)
 - Then it bind-mounts them into the sandbox (so your login/config/history persist across runs):
-  - `$HOME/.claude.json` (read-write)
-  - `$HOME/.claude/` (read-write)
+  - `${HOME}/.claude.json` (read-write)
+  - `${HOME}/.claude/` (read-write)
 
 **Project directory:**
 
@@ -110,7 +110,7 @@ You can edit `claude.rcfg` to customize what the sandbox can see. The default co
 
 **SSH (safe-by-default):**
 
-- If `SSH_AUTH_SOCK` is set, ClaudeCage forwards **only the agent socket** into the sandbox (no direct access to your `$HOME/.ssh` by default).
+- If `SSH_AUTH_SOCK` is set, ClaudeCage forwards **only the agent socket** into the sandbox (no direct access to your `${HOME}/.ssh` by default).
 - If you really need host SSH keys/config inside the sandbox (less secure), you can opt in:
 
 ```bash
