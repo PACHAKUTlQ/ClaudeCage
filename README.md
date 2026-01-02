@@ -125,7 +125,7 @@ CLAUDECAGE_ALLOW_SSH_KEYS=1 claude "Clone and inspect this repo."
 
 If you want to route Claude Code requests to other providers/models (OpenRouter, DeepSeek, Ollama, Gemini, etc.), use the external project **Claude Code Router**:
 
-- https://github.com/musistudio/claude-code-router
+- <https://github.com/musistudio/claude-code-router>
 
 This is **not part of ClaudeCage**. Please refer to its README for full configuration details.
 
@@ -133,14 +133,14 @@ Minimal usage:
 
 ```bash
 npm install -g @musistudio/claude-code-router
-ccr start
+ccr code
 ```
 
 Because ClaudeCage installs a `claude` binary into your `${PATH}` (drop-in replacement), when Claude Code Router runs `claude`, it will automatically invoke the **sandboxed** ClaudeCage `claude`.
 
 ### Custom API Endpoints & Proxies
 
-claude-code-router `ccr start` auto configures env variables and invokes Claude Code. If you like the manual way or don't want to use claude-code-router, you can make Claude Code use a custom API endpoint by setting the following environment variables _before_ running ClaudeCage:
+claude-code-router `ccr code` auto configures env variables and invokes Claude Code. If you like the manual way or don't want to use claude-code-router, you can make Claude Code use a custom API endpoint by setting the following environment variables _before_ running ClaudeCage:
 
 ```bash
 export ANTHROPIC_BASE_URL="http://localhost:3456/"

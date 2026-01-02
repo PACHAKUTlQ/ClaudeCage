@@ -125,7 +125,7 @@ CLAUDECAGE_ALLOW_SSH_KEYS=1 claude "Clone and inspect this repo."
 
 如果你希望把 Claude Code 的请求转发/路由到其他供应商与模型（OpenRouter、DeepSeek、Ollama、Gemini 等），推荐使用外部项目 **Claude Code Router**：
 
-- https://github.com/musistudio/claude-code-router
+- <https://github.com/musistudio/claude-code-router>
 
 它**不属于 ClaudeCage**，详细配置请直接参考该项目的 README。
 
@@ -133,14 +133,14 @@ CLAUDECAGE_ALLOW_SSH_KEYS=1 claude "Clone and inspect this repo."
 
 ```bash
 npm install -g @musistudio/claude-code-router
-ccr start
+ccr code
 ```
 
 由于 ClaudeCage 在 `${PATH}` 中提供了同名的 `claude`（可无缝替换），Claude Code Router 在调用 `claude` 时会自动使用 **沙箱版** 的 ClaudeCage `claude`。
 
 ### 自定义 API 端点和代理
 
-claude-code-router `ccr start` 自动设置环境变量并调用 Claude Code。如果你希望手动设置或者不想使用claude-code-router，你可以在运行 ClaudeCage _之前_ 通过设置环境变量，让 Claude Code 使用自定义的 API 端点：
+claude-code-router `ccr code` 自动设置环境变量并调用 Claude Code。如果你希望手动设置或者不想使用claude-code-router，你可以在运行 ClaudeCage _之前_ 通过设置环境变量，让 Claude Code 使用自定义的 API 端点：
 
 ```bash
 export ANTHROPIC_BASE_URL="http://localhost:3456/"
