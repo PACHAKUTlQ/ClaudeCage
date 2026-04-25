@@ -1,3 +1,7 @@
+> [!note]
+>
+> Claude Code now officially supports bun runtime and bwrap-based sandbox. It is recommended to use these native features. ClaudeCage might still work.
+
 <div id="header" align="center">
     <img src="icon.svg" width="250px" />
     <h1>ClaudeCage</h1>
